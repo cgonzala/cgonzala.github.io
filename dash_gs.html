@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+        .chart-container {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        select {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+        h1, h3 {
+            color: #003f88;
+        }
+    </style>
+</head>
+<body>
+    <h1> Program Interactive Dashboard</h1>
+
+    <select id="quarterSelect"></select>
+
+    <div class="container">
+        <div class="chart-container">
+            <h3>GHG Reduced</h3>
+            <canvas id="ghgChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>VMT</h3>
+            <canvas id="vmtChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Trips</h3>
+            <canvas id="tripsChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Free vs. Paid Programs</h3>
+            <canvas id="programChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Destination Types</h3>
+            <canvas id="destinationChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3mb_V1f58b1PxIU-fo4nMNSiCK0vNThHWB_L8qO0Jgnhb4hXeqDP1PybZUSGEX4th42eyyyF7E-NA/pub?gid=0&single=true&output=csv';
+
+        let data;
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch(sheetURL)
+                .then(response => response.text())
+                .then(csv => {
+                    data = Papa.parse(csv, { header: true, skipEmptyLines: true }).data;
+                    populateDropdown();
+                    updateCharts();
+                });
+
+            document.getElementById('quarterSelect').addEventListener('change', updateCharts);
+        });
+
+        function populateDropdown() {
+            const dropdown = document.getElementById('quarterSelect');
+            data.forEach(row => {
+                const option = document.createElement('option');
+                option.value = `${row.Quarter}-${row.Year}`;
+                option.textContent = `${row.Quarter} ${row.Year}`;
+                dropdown.appendChild(option);
+            });
+        }
+
+        function updateCharts() {
+            const selectedValue = document.getElementById('quarterSelect').value;
+            const [quarter, year] = selectedValue.split('-');
+
+            const row = data.find(d => d.Quarter === quarter && d.Year === year);
+
+            updateChart('ghgChart', 'bar', ['GHG Reduced'], [row['GHG Reduced']], 'GHG Reduced');
+            updateChart('vmtChart', 'bar', ['VMT'], [row['VMT']], 'VMT');
+            updateChart('tripsChart', 'bar', ['Trips'], [row['Trips']], 'Trips');
+
+            updateChart('programChart', 'pie', ['Free Programs', 'Paid Programs'], [row['Free Programs'], row['Paid Programs']]);
+            updateChart('destinationChart', 'pie', ['Entertainment', 'Healthcare', 'Errands/Shopping', 'Work Commute'],
+                [row['% Entretainment/Social'], row['% Healthcare'], row['% Household Errands Shopping'], row['% Work Commute']]);
+        }
+
+        let chartInstances = {};
+
+        function updateChart(canvasId, type, labels, dataset, datasetLabel = '') {
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: type,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: datasetLabel,
+                data: dataset,
+                backgroundColor: ['#003f88', '#f4b400', '#a6c8ff', '#ff6f61']
+            }]
+        },
+        options: { responsive: true }
+    });
+}
+    </script>
+</body>
+</html>
