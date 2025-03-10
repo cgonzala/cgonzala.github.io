@@ -24,20 +24,55 @@
             border-radius: 10px;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
         }
+        .chart-container-wide {
+            grid-column: span 3;
+        }
+        .chart-container-center {
+            grid-column: span 3;
+            display: flex;
+            justify-content: center;
+        }
         select {
             padding: 8px;
             font-size: 16px;
             border-radius: 5px;
+            margin: 10px;
         }
         h1, h3 {
             color: #003f88;
         }
+        .dropdown-container {
+            display: flex;
+            justify-content: flex-start;
+            padding-left: 20px;
+        }
+
+        .chart-container-timeline {
+            grid-column: span 3;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .bottom-charts-container {
+            grid-column: span 4;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1> Program Interactive Dashboard</h1>
+    <h1>CMO Interactive Dashboard</h1>
 
-    <select id="quarterSelect"></select>
+    <div class="dropdown-container">
+        <select id="quarterSelect"></select>
+        <select id="metricSelect">
+            <option value="GHG Reduced">GHG Reduced</option>
+            <option value="VMT">VMT</option>
+            <option value="Trips">Trips</option>
+        </select>
+    </div>
 
     <div class="container">
         <div class="chart-container">
@@ -52,6 +87,12 @@
             <h3>Trips</h3>
             <canvas id="tripsChart"></canvas>
         </div>
+
+        <div class="chart-container chart-container-timeline">
+            <h3>Metric Timeline</h3>
+            <canvas id="timelineChart"></canvas>
+        </div>
+
         <div class="chart-container">
             <h3>Free vs. Paid Programs</h3>
             <canvas id="programChart"></canvas>
@@ -63,67 +104,65 @@
     </div>
 
     <script>
-        const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3mb_V1f58b1PxIU-fo4nMNSiCK0vNThHWB_L8qO0Jgnhb4hXeqDP1PybZUSGEX4th42eyyyF7E-NA/pub?gid=0&single=true&output=csv';
+         const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3mb_V1f58b1PxIU-fo4nMNSiCK0vNThHWB_L8qO0Jgnhb4hXeqDP1PybZUSGEX4th42eyyyF7E-NA/pub?gid=0&single=true&output=csv';
 
-        let data;
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch(sheetURL)
-                .then(response => response.text())
-                .then(csv => {
-                    data = Papa.parse(csv, { header: true, skipEmptyLines: true }).data;
-                    populateDropdown();
-                    updateCharts();
-                });
+let data;
+let charts = {};
 
-            document.getElementById('quarterSelect').addEventListener('change', updateCharts);
+document.addEventListener('DOMContentLoaded', () => {
+    fetch(sheetURL)
+        .then(res => res.text())
+        .then(csv => {
+            data = Papa.parse(csv, { header: true, skipEmptyLines: true }).data;
+            populateDropdown();
+            updateCharts();
         });
 
-        function populateDropdown() {
-            const dropdown = document.getElementById('quarterSelect');
-            data.forEach(row => {
-                const option = document.createElement('option');
-                option.value = `${row.Quarter}-${row.Year}`;
-                option.textContent = `${row.Quarter} ${row.Year}`;
-                dropdown.appendChild(option);
-            });
-        }
+    document.getElementById('quarterSelect').addEventListener('change', updateCharts);
+    document.getElementById('metricSelect').addEventListener('change', updateTimeline);
+});
 
-        function updateCharts() {
-            const selectedValue = document.getElementById('quarterSelect').value;
-            const [quarter, year] = selectedValue.split('-');
-
-            const row = data.find(d => d.Quarter === quarter && d.Year === year);
-
-            updateChart('ghgChart', 'bar', ['GHG Reduced'], [row['GHG Reduced']], 'GHG Reduced');
-            updateChart('vmtChart', 'bar', ['VMT'], [row['VMT']], 'VMT');
-            updateChart('tripsChart', 'bar', ['Trips'], [row['Trips']], 'Trips');
-
-            updateChart('programChart', 'pie', ['Free Programs', 'Paid Programs'], [row['Free Programs'], row['Paid Programs']]);
-            updateChart('destinationChart', 'pie', ['Entertainment', 'Healthcare', 'Errands/Shopping', 'Work Commute'],
-                [row['% Entretainment/Social'], row['% Healthcare'], row['% Household Errands Shopping'], row['% Work Commute']]);
-        }
-
-        let chartInstances = {};
-
-        function updateChart(canvasId, type, labels, dataset, datasetLabel = '') {
-    if (chartInstances[canvasId]) {
-        chartInstances[canvasId].destroy();
-    }
-
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    chartInstances[canvasId] = new Chart(ctx, {
-        type: type,
-        data: {
-            labels: labels,
-            datasets: [{
-                label: datasetLabel,
-                data: dataset,
-                backgroundColor: ['#003f88', '#f4b400', '#a6c8ff', '#ff6f61']
-            }]
-        },
-        options: { responsive: true }
+function populateDropdown() {
+    const dropdown = document.getElementById('quarterSelect');
+    data.forEach(row => {
+        const option = document.createElement('option');
+        option.value = `${row.Quarter}-${row.Year}`;
+        option.textContent = `${row.Quarter} ${row.Year}`;
+        dropdown.appendChild(option);
     });
 }
-    </script>
+
+function updateCharts() {
+    const selectedValue = document.getElementById('quarterSelect').value;
+    const [quarter, year] = selectedValue.split('-');
+    const row = data.find(d => d.Quarter === quarter && d.Year === year);
+
+    updateChart('ghgChart', 'bar', ['GHG Reduced'], [row['GHG Reduced']], 'GHG Reduced');
+    updateChart('vmtChart', 'bar', ['VMT'], [row['VMT']], 'VMT');
+    updateChart('tripsChart', 'bar', ['Trips'], [row['Trips']], 'Trips');
+
+    updateChart('programChart', 'pie', ['Free Programs', 'Paid Programs'], [row['Free Programs'], row['Paid Programs']], 'Programs');
+
+    updateChart('destinationChart', 'pie', ['Entertainment', 'Healthcare', 'Errands', 'Work'], [
+        row['% Entretainment/Social'], row['% Healthcare'], row['% Household Errands Shopping'], row['% Work Commute']
+    ], 'Destination Types');
+
+    updateTimeline();
+}
+
+function updateChart(canvasId, type, labels, dataset, title) {
+    if (charts[canvasId]) charts[canvasId].destroy();
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    charts[canvasId] = new Chart(ctx, { type, data: { labels, datasets: [{ label: title, data: dataset, backgroundColor: ['#003f88','#f4b400','#a6c8ff','#ff6f61']}]}, options: {responsive: true}});
+}
+
+function updateTimeline() {
+    const metric = document.getElementById('metricSelect').value;
+    const labels = data.map(d => `${d.Quarter}-${d.Year}`);
+    const values = data.map(d => d[metric]);
+
+    updateChart('timelineChart', 'line', labels, values, metric + ' Timeline');
+}
+</script>
 </body>
 </html>
